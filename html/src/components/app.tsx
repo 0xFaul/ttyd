@@ -17,6 +17,8 @@ const clientOptions = {
     disableLeaveAlert: false,
     disableResizeOverlay: false,
     titleFixed: null,
+    popupAuthOnRefreshError: true,    
+    authUrl: [window.location.protocol, '//', window.location.host, path, '/auth'].join(''),
 } as ClientOptions;
 const termOptions = {
     fontSize: 13,

@@ -38,6 +38,8 @@ export interface ClientOptions {
     disableLeaveAlert: boolean;
     disableResizeOverlay: boolean;
     titleFixed: string;
+    popupAuthOnRefreshError: boolean;
+    authUrl: string;
 }
 
 interface Props {
@@ -141,9 +143,9 @@ export class Xterm extends Component<Props> {
                 this.token = json.token;
             }
         } catch (e) {
-            console.error(`[ttyd] fetch ${this.props.tokenUrl}: `, e);
+                console.error(`[ttyd] fetch ${this.props.tokenUrl}: `, e);
+            }
         }
-    }
 
     @bind
     private onWindowResize() {
@@ -292,6 +294,20 @@ export class Xterm extends Component<Props> {
     }
 
     @bind
+    private authPopup() {
+        const auth_popup = window.open(this.props.clientOptions.authUrl, this.props.clientOptions.authUrl, "width=500,height=500");
+        if (auth_popup) {
+            auth_popup.focus();
+        }
+        var timer = setInterval(function() {
+            if (auth_popup.closed) {
+                clearInterval(timer);
+                this.refreshToken().then(this.connect);
+            }
+        }, 500);
+    }
+
+    @bind
     private onSocketOpen() {
         console.log('[ttyd] websocket connection opened');
 
@@ -323,14 +339,13 @@ export class Xterm extends Component<Props> {
     @bind
     private onSocketClose(event: CloseEvent) {
         console.log(`[ttyd] websocket connection closed with code: ${event.code}`);
-
         const { refreshToken, connect, doReconnect, overlayAddon } = this;
         overlayAddon.showOverlay('Connection Closed', null);
 
         // 1000: CLOSE_NORMAL
         if (event.code !== 1000 && doReconnect) {
             overlayAddon.showOverlay('Reconnecting...', null);
-            refreshToken().then(connect);
+            this.authPopup();
         } else {
             const { terminal } = this;
             const keyDispose = terminal.onKey(e => {
@@ -338,7 +353,7 @@ export class Xterm extends Component<Props> {
                 if (event.key === 'Enter') {
                     keyDispose.dispose();
                     overlayAddon.showOverlay('Reconnecting...', null);
-                    refreshToken().then(connect);
+                    this.authPopup();
                 }
             });
             overlayAddon.showOverlay('Press ⏎ to Reconnect', null);

@@ -1,5 +1,6 @@
 #include "server.h"
 
+//#include <bits/getopt_ext.h>
 #include <errno.h>
 #include <getopt.h>
 #include <json.h>
@@ -55,6 +56,7 @@ static const struct option options[] = {{"port", required_argument, NULL, 'p'},
                                         {"interface", required_argument, NULL, 'i'},
                                         {"credential", required_argument, NULL, 'c'},
                                         {"auth-header", required_argument, NULL, 'H'},
+                                        {"auth-url", required_argument, NULL, 'U'},
                                         {"uid", required_argument, NULL, 'u'},
                                         {"gid", required_argument, NULL, 'g'},
                                         {"signal", required_argument, NULL, 's'},
@@ -81,7 +83,7 @@ static const struct option options[] = {{"port", required_argument, NULL, 'p'},
                                         {"version", no_argument, NULL, 'v'},
                                         {"help", no_argument, NULL, 'h'},
                                         {NULL, 0, 0, 0}};
-static const char *opt_string = "p:i:c:H:u:g:s:w:I:b:P:6aSC:K:A:Rt:T:Om:oBd:vh";
+static const char *opt_string = "p:i:c:H:u:g:s:w:I:b:P:6aSC:K:A:URt:T:Om:oBd:vh";
 
 static void print_help() {
   // clang-format off
@@ -95,6 +97,7 @@ static void print_help() {
           "    -i, --interface         Network interface to bind (eg: eth0), or UNIX domain socket path (eg: /var/run/ttyd.sock)\n"
           "    -c, --credential        Credential for basic authentication (format: username:password)\n"
           "    -H, --auth-header       HTTP Header name for auth proxy, this will configure ttyd to let a HTTP reverse proxy handle authentication\n"
+          "    -U, --auth-url <url>    url for auth proxy, when client-option 'popupAuthOnRefreshError=true' is set, this will trigger a popup to specified url when refreshing token fails. Use this e.g. for OAuth handled by a proxy and your OAuth provider does not allow CORS.\n"
           "    -u, --uid               User id to run with\n"
           "    -g, --gid               Group id to run with\n"
           "    -s, --signal            Signal to send to the command when exit it (default: 1, SIGHUP)\n"
@@ -144,6 +147,7 @@ static void print_config() {
     lwsl_notice("  websocket: %s\n", endpoints.ws);
   }
   if (server->auth_header != NULL) lwsl_notice("  auth header: %s\n", server->auth_header);
+  if (server->auth_url != NULL) lwsl_notice("  auth_url: %s\n", server->auth_url);
   if (server->check_origin) lwsl_notice("  check origin: true\n");
   if (server->url_arg) lwsl_notice("  allow url arg: true\n");
   if (server->readonly) lwsl_notice("  readonly: true\n");
@@ -199,6 +203,7 @@ static void server_free(struct server *ts) {
   if (ts == NULL) return;
   if (ts->credential != NULL) free(ts->credential);
   if (ts->auth_header != NULL) free(ts->auth_header);
+  if (ts->auth_url != NULL) free(ts->auth_url);
   if (ts->index != NULL) free(ts->index);
   if (ts->cwd != NULL) free(ts->cwd);
   free(ts->command);
@@ -471,6 +476,9 @@ int main(int argc, char **argv) {
         break;
       case '?':
         break;
+      case 'U':
+        strncpy(server->auth_url, optarg, sizeof(server->auth_url) - 1);
+        server->auth_url[sizeof(server->auth_url) - 1] = '\0';
       case 't':
         optind--;
         for (; optind < start && *argv[optind] != '-'; optind++) {
