@@ -295,6 +295,7 @@ export class Xterm extends Component<Props> {
 
     @bind
     private authPopup() {
+        const { refreshToken, connect } = this;
         const auth_popup = window.open(this.props.clientOptions.authUrl, this.props.clientOptions.authUrl, "width=500,height=500");
         if (auth_popup) {
             auth_popup.focus();
@@ -302,7 +303,7 @@ export class Xterm extends Component<Props> {
         var timer = setInterval(function() {
             if (auth_popup.closed) {
                 clearInterval(timer);
-                this.refreshToken().then(this.connect);
+                refreshToken().then(connect);
             }
         }, 500);
     }
@@ -339,7 +340,7 @@ export class Xterm extends Component<Props> {
     @bind
     private onSocketClose(event: CloseEvent) {
         console.log(`[ttyd] websocket connection closed with code: ${event.code}`);
-        const { refreshToken, connect, doReconnect, overlayAddon } = this;
+        const { doReconnect, overlayAddon } = this;
         overlayAddon.showOverlay('Connection Closed', null);
 
         // 1000: CLOSE_NORMAL
