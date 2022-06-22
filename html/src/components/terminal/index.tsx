@@ -294,18 +294,17 @@ export class Xterm extends Component<Props> {
     }
 
     @bind
-    private authPopup() {
+    private authPopup(auth_popup) {
         const { refreshToken, connect } = this;
-        const auth_popup = window.open(this.props.clientOptions.authUrl, this.props.clientOptions.authUrl, "width=500,height=500");
         if (auth_popup) {
             auth_popup.focus();
+            var timer = setInterval(function() {
+                if (auth_popup.closed) {
+                    clearInterval(timer);
+                    refreshToken().then(connect);
+                }
+            }, 500);
         }
-        var timer = setInterval(function() {
-            if (auth_popup.closed) {
-                clearInterval(timer);
-                refreshToken().then(connect);
-            }
-        }, 500);
     }
 
     @bind
@@ -325,7 +324,7 @@ export class Xterm extends Component<Props> {
         );
 
         if (this.opened) {
-            terminal.reset();
+            //terminal.reset();
             terminal.resize(dims.cols, dims.rows);
             overlayAddon.showOverlay('Reconnected', 300);
         } else {
@@ -340,25 +339,21 @@ export class Xterm extends Component<Props> {
     @bind
     private onSocketClose(event: CloseEvent) {
         console.log(`[ttyd] websocket connection closed with code: ${event.code}`);
-        const { doReconnect, overlayAddon } = this;
+        const { overlayAddon, mouseHandler } = this;
         overlayAddon.showOverlay('Connection Closed', null);
 
-        // 1000: CLOSE_NORMAL
-        if (event.code !== 1000 && doReconnect) {
-            overlayAddon.showOverlay('Reconnecting...', null);
-            this.authPopup();
-        } else {
-            const { terminal } = this;
-            const keyDispose = terminal.onKey(e => {
-                const event = e.domEvent;
-                if (event.key === 'Enter') {
-                    keyDispose.dispose();
-                    overlayAddon.showOverlay('Reconnecting...', null);
-                    this.authPopup();
-                }
-            });
-            overlayAddon.showOverlay('Press ⏎ to Reconnect', null);
-        }
+        window.addEventListener('mouseup', mouseHandler);
+        overlayAddon.showOverlay('Click to Reconnect', null); //'Press ⏎ to Reconnect', null);
+
+    }
+    
+    @bind
+    private mouseHandler(_: MouseEvent) {
+        const { overlayAddon, authPopup, mouseHandler } = this;
+        const auth_popup = window.open(this.props.clientOptions.authUrl, this.props.clientOptions.authUrl, "width=500,height=500");
+        window.removeEventListener('mouseup', mouseHandler);
+        overlayAddon.showOverlay('Reconnecting...', null);
+        authPopup(auth_popup);
     }
 
     @bind
